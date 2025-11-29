@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 // 1. IMPORTAMOS NOSSO NOVO SERVIÇO DE EMAIL
-const { sendWelcomeEmail } = require('../../services/email.service');
+const { sendWelcomeEmail } = require('../../services/email.service')
 
 // --- REGISTRO DE USUÁRIO (COM LÓGICA CORRIGIDA) ---
 exports.registerUser = async (req, res) => {
@@ -37,6 +37,7 @@ exports.registerUser = async (req, res) => {
       INSERT INTO organizations(name, business_type, cep, phone) 
       VALUES($1, $2, $3, $4) 
       RETURNING id
+
     `;
     const orgResult = await db.query(orgQuery, [
       businessName,
@@ -159,5 +160,30 @@ exports.loginUser = async (req, res) => {
   } catch (error) {
     console.error('Erro no login:', error);
     res.status(500).json({ error: 'Erro interno do servidor.' });
+  }
+};
+
+exports.verifyToken = async (req, res) => {
+  try {
+    // O middleware 'checkAuth' já validou a assinatura do token e colocou o ID em req.userData.
+    // Agora, vamos garantir que o usuário não foi deletado do banco.
+    
+    const { userId } = req.userData;
+    
+    const userQuery = 'SELECT id, name, email, role FROM users WHERE id = $1';
+    const { rows } = await db.query(userQuery, [userId]);
+    const user = rows[0];
+
+    if (!user) {
+      // Token é válido criptograficamente, mas o usuário não existe mais (foi deletado)
+      return res.status(404).json({ valid: false, error: 'Usuário não encontrado.' });
+    }
+
+    // Tudo certo!
+    res.status(200).json({ valid: true, user: user });
+
+  } catch (error) {
+    console.error('Erro na verificação:', error);
+    res.status(500).json({ error: 'Erro interno.' });
   }
 };

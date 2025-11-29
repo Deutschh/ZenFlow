@@ -1,6 +1,7 @@
 // Em: src/pages/Login.jsx
 
 import React from "react";
+import { useEffect } from "react"; 
 import { Link, useNavigate } from "react-router-dom"; // Importa o useNavigate
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,7 @@ import { StepperCadastro } from "../components/StepperCadastro.jsx"; // Nome cor
 import { Checkbox } from "@/components/ui/checkbox.jsx";
 
 // Importa as ferramentas de formulário
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
@@ -39,15 +40,63 @@ const loginSchema = z.object({
 });
 
 export function Login() {
-  const navigate = useNavigate(); // Hook para nos redirecionar
+  const navigate = useNavigate();
 
-  // Configuramos o 'react-hook-form'
+  // --- 2. NOVA LÓGICA: VERIFICAR SE JÁ ESTÁ LOGADO ---
+useEffect(() => {
+    const verifyUserSession = async () => {
+      // 1. Pega o token
+      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+
+      // Se não tem token, não faz nada (fica na tela de login)
+      if (!token) return;
+
+      try {
+        console.log("Verificando validade do token...");
+        
+        // 2. Pergunta ao Backend se o token é válido
+        const response = await fetch("http://localhost:3000/api/auth/verify", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}` // Envia o token para o middleware checar
+          },
+        });
+
+        // 3. Se a resposta for OK (200), o usuário existe e o token é bom
+        if (response.ok) {
+          console.log("Token válido! Redirecionando...");
+          navigate("/planos");
+        } else {
+          // 4. Se der erro (401, 403, 404), o token é inválido ou usuário foi deletado
+          throw new Error("Sessão inválida");
+        }
+
+      } catch (error) {
+        console.warn("Sessão expirada ou inválida. Limpando dados.");
+        // 5. FAXINA: Remove os tokens inválidos para não cair no loop
+        localStorage.removeItem("authToken");
+        sessionStorage.removeItem("authToken");
+        // O usuário permanece na tela de Login para entrar novamente
+      }
+    };
+
+    verifyUserSession();
+  }, [navigate]);
+  // ----------------------------------------------------
+
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      remember: false,
+    },
   });
 
   // A função que é chamada QUANDO o formulário é válido
@@ -131,7 +180,7 @@ export function Login() {
         {/* --- ABA DE LOGIN --- */}
         <TabsContent value="login">
           {/* ADICIONADO: tag <form> com handleSubmit */}
-          <form onSubmit={handleSubmit(onSubmitLogin)}>
+          <form onSubmit={handleSubmit(onSubmitLogin, (errors) => console.log("ERROS DE VALIDAÇÃO:", errors))}>
             <Card className="bg-slate-200/20 h-11/12 text-foreground font-sans border-none shadow-none pl-3">
               <CardHeader>
                 <CardTitle className={"text-2xl text-foreground"}>
