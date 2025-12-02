@@ -1,7 +1,8 @@
 // Em: src/pages/Login.jsx
 
 import React from "react";
-import { useEffect } from "react"; 
+import { useEffect } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { Link, useNavigate } from "react-router-dom"; // Importa o useNavigate
 import { Button } from "@/components/ui/button";
 import {
@@ -32,10 +33,7 @@ const loginSchema = z.object({
     .trim()
     .min(1, { message: "O email é obrigatório." })
     .email({ message: "Por favor, insira um email válido." }),
-  password: z
-    .string()
-    .trim()
-    .min(1, { message: "A senha é obrigatória." }),
+  password: z.string().trim().min(1, { message: "A senha é obrigatória." }),
   remember: z.boolean().default(false), // Para o "Mantenha-me conectado"
 });
 
@@ -43,23 +41,25 @@ export function Login() {
   const navigate = useNavigate();
 
   // --- 2. NOVA LÓGICA: VERIFICAR SE JÁ ESTÁ LOGADO ---
-useEffect(() => {
+  useEffect(() => {
     const verifyUserSession = async () => {
       // 1. Pega o token
-      const token = localStorage.getItem("authToken") || sessionStorage.getItem("authToken");
+      const token =
+        localStorage.getItem("authToken") ||
+        sessionStorage.getItem("authToken");
 
       // Se não tem token, não faz nada (fica na tela de login)
       if (!token) return;
 
       try {
         console.log("Verificando validade do token...");
-        
+
         // 2. Pergunta ao Backend se o token é válido
         const response = await fetch("http://localhost:3000/api/auth/verify", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}` // Envia o token para o middleware checar
+            Authorization: `Bearer ${token}`, // Envia o token para o middleware checar
           },
         });
 
@@ -71,7 +71,6 @@ useEffect(() => {
           // 4. Se der erro (401, 403, 404), o token é inválido ou usuário foi deletado
           throw new Error("Sessão inválida");
         }
-
       } catch (error) {
         console.warn("Sessão expirada ou inválida. Limpando dados.");
         // 5. FAXINA: Remove os tokens inválidos para não cair no loop
@@ -119,7 +118,9 @@ useEffect(() => {
       const result = await response.json();
 
       if (!response.ok) {
-        alert(result.error || "Erro ao fazer login. Verifique suas credenciais.");
+        alert(
+          result.error || "Erro ao fazer login. Verifique suas credenciais."
+        );
         return;
       }
 
@@ -132,11 +133,10 @@ useEffect(() => {
       } else {
         sessionStorage.setItem("authToken", result.token);
       }
-      
+
       // (Futuramente, vamos checar se ele tem plano e redirecionar para /dashboard)
       // Por agora, vamos para a página de planos
       navigate("/planos");
-
     } catch (error) {
       console.error("Erro de rede:", error);
       alert(
@@ -144,7 +144,7 @@ useEffect(() => {
       );
     }
   };
-  
+
   return (
     // Seu layout (sem alteração)
     <div className="w-full h-screen flex justify-between bg-slate-200 relative ">
@@ -153,7 +153,7 @@ useEffect(() => {
           ZenFlow
         </div>
       </Link>
-      
+
       <Tabs
         defaultValue="login"
         className="bg-slate-200/20 w-60/100 pr-16 pl-12 flex my-auto bg-paink-400 flex-col h-2/3"
@@ -180,7 +180,11 @@ useEffect(() => {
         {/* --- ABA DE LOGIN --- */}
         <TabsContent value="login">
           {/* ADICIONADO: tag <form> com handleSubmit */}
-          <form onSubmit={handleSubmit(onSubmitLogin, (errors) => console.log("ERROS DE VALIDAÇÃO:", errors))}>
+          <form
+            onSubmit={handleSubmit(onSubmitLogin, (errors) =>
+              console.log("ERROS DE VALIDAÇÃO:", errors)
+            )}
+          >
             <Card className="bg-slate-200/20 h-11/12 text-foreground font-sans border-none shadow-none pl-3">
               <CardHeader>
                 <CardTitle className={"text-2xl text-foreground"}>
@@ -201,13 +205,17 @@ useEffect(() => {
                   <Input
                     id="email-login"
                     type="email"
-                    className={"w-1/2 h-12 shadow-xl border-1 border-zinc-400/50"}
+                    className={
+                      "w-1/2 h-12 shadow-xl border-1 border-zinc-400/50"
+                    }
                     placeholder="padariadaAna@gmail.com"
                     {...register("email")} // ADICIONADO: registro do form
                   />
                   {/* ADICIONADO: Mensagem de erro */}
                   {errors.email && (
-                    <p className="text-red-400 text-sm mt-1">{errors.email.message}</p>
+                    <p className="text-red-400 text-sm mt-1">
+                      {errors.email.message}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2 w-1/2">
@@ -220,19 +228,25 @@ useEffect(() => {
                   {/* MUDANÇA: Input -> PasswordInput */}
                   <PasswordInput
                     id="password-login"
-                    className={"w-full h-12 shadow-xl border-1 border-zinc-400/50 text-foreground text-lg"}
+                    className={
+                      "w-full h-12 shadow-xl border-1 border-zinc-400/50 text-foreground text-lg"
+                    }
                     {...register("password")} // ADICIONADO: registro do form
                   />
                   {/* ADICIONADO: Mensagem de erro */}
                   {errors.password && (
-                    <p className="text-red-400 text-sm mt-1">{errors.password.message}</p>
+                    <p className="text-red-400 text-sm mt-1">
+                      {errors.password.message}
+                    </p>
                   )}
                 </div>
               </CardContent>
               <div className="text-gray-500 font-semibold w-1/2 bg-reda-600 pl-16 text-lg mt-2 flex">
-                <Checkbox 
+                <Checkbox
                   id="remember"
-                  className={"border-gray-500 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 mr-2 w-5 h-5 mt-1"}
+                  className={
+                    "border-gray-500 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600 mr-2 w-5 h-5 mt-1"
+                  }
                   {...register("remember")} // ADICIONADO: registro do form
                 />
                 <Label htmlFor="remember">Mantenha-me conectado</Label>
@@ -260,8 +274,47 @@ useEffect(() => {
                   </div>
                   <div className="w-41/100 bg-zinc-400/50 h-0.5 my-auto"></div>
                 </div>
-                <div className="w-2/3 mt-1 h-12 border border-zinc-400 flex items-center justify-center hover:bg-zinc-500/25 transition-all duration-500 cursor-pointer">
-                  Fazer login com Google
+                <div className="w-48% mt-1 h-11 border border-zinc-400 flex items-center justify-center hover:bg-zinc-500/25 transition-all duration-500 cursor-pointer">
+                  <GoogleLogin
+                  className=""
+                    onSuccess={async (credentialResponse) => {
+                      console.log("Google Credential:", credentialResponse);
+
+                      try {
+                        // Enviar o token do Google para o nosso Backend
+                        const res = await fetch(
+                          "http://localhost:3000/api/auth/google",
+                          {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              credential: credentialResponse.credential,
+                            }),
+                          }
+                        );
+
+                        const data = await res.json();
+
+                        if (res.ok) {
+                          // Login Sucesso! Salva o token e redireciona
+                          localStorage.setItem("authToken", data.token);
+                          navigate("/planos");
+                        } else {
+                          alert("Erro no login Google: " + data.error);
+                        }
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }}
+                    onError={() => {
+                      console.log("Login Falhou");
+                    }}
+                    useOneTap // Tenta logar automaticamente se possível (opcional)
+                    theme="outline" // ou "filled_black"
+                    size="large"
+                    width="100%" // Para tentar ocupar a largura (o Google tem tamanhos fixos as vezes)
+                    background="black"
+                  />
                 </div>
               </CardFooter>
             </Card>
@@ -272,7 +325,9 @@ useEffect(() => {
         <TabsContent value="cadastro">
           <Card className="bg-slate-200 border-none shadow-none text-white">
             <CardHeader>
-              <CardTitle className={"text-2xl text-foreground"}>Crie sua conta</CardTitle>
+              <CardTitle className={"text-2xl text-foreground"}>
+                Crie sua conta
+              </CardTitle>
               <CardDescription className="text-gray-400 text-lg">
                 Siga os passos para começar a usar o ZenFlow.
               </CardDescription>
@@ -283,7 +338,7 @@ useEffect(() => {
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       {/* Fundo Animado (sem alteração) */}
       <div className="w-40/100 inset-0 z-0 shadow-[0px_0px_30px_rgba(0,0,0,1)]">
         <Iridescence

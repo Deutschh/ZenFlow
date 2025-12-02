@@ -3,6 +3,9 @@
 const db = require('../../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 
 // 1. IMPORTAMOS NOSSO NOVO SERVIÇO DE EMAIL
 const { sendWelcomeEmail } = require('../../services/email.service')
@@ -185,5 +188,80 @@ exports.verifyToken = async (req, res) => {
   } catch (error) {
     console.error('Erro na verificação:', error);
     res.status(500).json({ error: 'Erro interno.' });
+  }
+};
+
+exports.loginGoogle = async (req, res) => {
+  const { credential } = req.body; // O token que vem do frontend
+
+  try {
+    // 1. Verificar o token com o Google
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    // Aqui temos os dados confiáveis do Google:
+    const { email, name, sub: googleId, picture } = payload; 
+
+    // 2. Verificar se o usuário já existe no nosso banco
+    const userQuery = 'SELECT * FROM users WHERE email = $1';
+    const { rows } = await db.query(userQuery, [email]);
+    let user = rows[0];
+
+    // 3. Se não existir, CRIAR automaticamente
+    if (!user) {
+      // Precisamos de uma organização. 
+      // OBS: Em um fluxo real, talvez você precise perguntar o nome da empresa antes.
+      // Para este MVP, vamos criar uma organização com o nome dele.
+      
+      await db.query('BEGIN');
+
+      // Cria Org
+      const orgRes = await db.query('INSERT INTO organizations(name) VALUES($1) RETURNING id', [name + "'s Company"]);
+      const orgId = orgRes.rows[0].id;
+
+      // Cria Usuário (Sem senha!)
+      const newUserQuery = `
+        INSERT INTO users (organization_id, name, email, google_id, avatar_url, role) 
+        VALUES ($1, $2, $3, $4, $5, 'owner') 
+        RETURNING *`;
+      
+      const userRes = await db.query(newUserQuery, [orgId, name, email, googleId, picture]);
+      user = userRes.rows[0];
+
+      await db.query('COMMIT');
+    } else {
+        // Se o usuário existe mas não tem google_id (criou com senha antes),
+        // podemos atualizar para vincular a conta (opcional, mas recomendado).
+        if (!user.google_id) {
+            await db.query('UPDATE users SET google_id = $1, avatar_url = $2 WHERE id = $3', [googleId, picture, user.id]);
+        }
+    }
+
+    // 4. Gerar o NOSSO Token (JWT)
+    // Exatamente igual ao login normal
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        organizationId: user.organization_id,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.status(200).json({
+      message: 'Login Google realizado!',
+      token: token,
+      user: { id: user.id, name: user.name, email: user.email, avatar: user.avatar_url }
+    });
+
+  } catch (error) {
+    await db.query('ROLLBACK'); // Caso dê erro na criação
+    console.error('Erro Google Auth:', error);
+    res.status(400).json({ error: 'Falha na autenticação com Google.' });
   }
 };

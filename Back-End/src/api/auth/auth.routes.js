@@ -13,4 +13,6 @@ router.post('/login', controller.loginUser);
 
 router.get('/verify', checkAuth, controller.verifyToken);
 
+router.post('/google', controller.loginGoogle);
+
 module.exports = router;
