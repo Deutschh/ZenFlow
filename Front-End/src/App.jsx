@@ -4,7 +4,7 @@ import React from 'react';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import  Home  from './pages/Home.jsx'; 
 import { Login } from './pages/Login.jsx';
-import { Planos } from './pages/Planos.jsx';
+import  Planos  from './pages/Planos.jsx';
 
 // (Eventualmente, podemos adicionar Navbar/Footer aqui)
 function Layout() {
