@@ -62,11 +62,16 @@ export function Login() {
             Authorization: `Bearer ${token}`, // Envia o token para o middleware checar
           },
         });
-
-        // 3. Se a resposta for OK (200), o usuário existe e o token é bom
         if (response.ok) {
-          console.log("Token válido! Redirecionando...");
-          navigate("/planos");
+          const data = await response.json(); // Precisamos ler o JSON da resposta
+          console.log("Token válido! Redirecionando...", data.user.plan);
+
+          // Se tem plano definido, vai pro Dashboard. Se não, Planos.
+          if (data.user.plan && data.user.plan !== "null") {
+            navigate("/dashboard");
+          } else {
+            navigate("/planos");
+          }
         } else {
           // 4. Se der erro (401, 403, 404), o token é inválido ou usuário foi deletado
           throw new Error("Sessão inválida");
@@ -136,7 +141,11 @@ export function Login() {
 
       // (Futuramente, vamos checar se ele tem plano e redirecionar para /dashboard)
       // Por agora, vamos para a página de planos
-      navigate("/planos");
+      if (result.user.plan && result.user.plan !== "null") {
+        navigate("/dashboard");
+      } else {
+        navigate("/planos");
+      }
     } catch (error) {
       console.error("Erro de rede:", error);
       alert(
@@ -276,7 +285,7 @@ export function Login() {
                 </div>
                 <div className="w-48% mt-1 h-11 border border-zinc-400 flex items-center justify-center hover:bg-zinc-500/25 transition-all duration-500 cursor-pointer">
                   <GoogleLogin
-                  className=""
+                    className=""
                     onSuccess={async (credentialResponse) => {
                       console.log("Google Credential:", credentialResponse);
 

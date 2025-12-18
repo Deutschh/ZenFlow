@@ -1,18 +1,24 @@
-// Em: src/App.jsx (Este é um ARQUIVO NOVO)
+// Em: src/App.jsx
 
-import React from 'react';
-import { Routes, Route, Outlet } from 'react-router-dom';
-import  Home  from './pages/Home.jsx'; 
-import { Login } from './pages/Login.jsx';
-import  Planos  from './pages/Planos.jsx';
-import Welcome from './pages/Welcome'; 
-import Checkout from './pages/Checkout.jsx';
-// (Eventualmente, podemos adicionar Navbar/Footer aqui)
-function Layout() {
+import React from "react";
+import { Routes, Route, Outlet } from "react-router-dom";
+import Home from "./pages/Home.jsx";
+import { Login } from "./pages/Login.jsx";
+import Planos from "./pages/Planos.jsx";
+import Welcome from "./pages/Welcome";
+import Checkout from "./pages/Checkout.jsx";
+import Overview from "./pages/dashboard/Overview";
+import DashboardLayout from "./layouts/DashboardLayout";
+
+// Layout Público (Site, Landing Page, Login)
+function PublicLayout() {
   return (
-    <div>
-      {/* <Navbar /> */}
-      <Outlet /> {/* As páginas (Home, Login, etc.) serão renderizadas aqui */}
+    <div className="min-h-screen flex flex-col">
+      {/* <Navbar /> Futura Navbar do Site */}
+      <div className="flex-1">
+        <Outlet />
+      </div>
+      {/* <Footer /> Futuro Footer do Site */}
     </div>
   );
 }
@@ -20,26 +26,28 @@ function Layout() {
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
-        {/* Rota 1: A Home Page */}
-        <Route index element={<Home />} />
-        
-        {/* Rota 2: Login/Cadastro */}
-        <Route path="login" element={<Login />} />
-        
-        <Route path="Home" element={<Home />} />
-
-        {/* Rota 3: Planos */}
-        <Route path="planos" element={<Planos />} />
-
+      
+      {/* --- GRUPO 1: ROTAS PÚBLICAS --- */}
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/planos" element={<Planos />} />
         <Route path="/welcome/:planName" element={<Welcome />} />
-
         <Route path="/checkout/:planName" element={<Checkout />} />
-
-        {/* (Futuramente) Rota 4: Pagamento */}
-        {/* <Route path="pagamento" element={<Pagamento />} /> */}
-
       </Route>
+
+      {/* --- GRUPO 2: ROTAS DO DASHBOARD (Separado) --- */}
+      {/* Aqui usamos o DashboardLayout como "pai" */}
+      <Route path="/dashboard" element={<DashboardLayout />}>
+        {/* Quando acessar /dashboard, renderiza o Overview dentro do Layout */}
+        <Route index element={<Overview />} />
+        
+        {/* Futuras rotas ficarão aqui dentro: */}
+        {/* <Route path="lojas" element={<Stores />} /> */}
+        {/* <Route path="estoque" element={<Inventory />} /> */}
+      </Route>
+
     </Routes>
   );
 }

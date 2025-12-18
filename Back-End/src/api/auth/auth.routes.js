@@ -9,7 +9,7 @@ const checkAuth = require('../middleware/auth.middleware');
 router.post('/register', controller.registerUser);
 
 //rota para o Login
-router.post('/login', controller.loginUser); 
+router.post('/login', controller.login); 
 
 router.get('/verify', checkAuth, controller.verifyToken);
 

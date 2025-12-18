@@ -231,7 +231,7 @@ export default function Checkout() {
                     ${selectedCycle === key 
                       ? "bg-white text-indigo-900 border-white shadow-lg scale-105 z-10 cursor-default" 
                       : "bg-indigo-900/90 text-indigo-200 border-transparent hover:bg-indigo-950 cursor-pointer"
-                    }
+                    }  
                   `}
                 >
                   {data.label}

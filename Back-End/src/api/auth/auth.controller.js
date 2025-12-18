@@ -112,7 +112,7 @@ exports.registerUser = async (req, res) => {
 
 // --- LOGIN DE USUÁRIO ---
 // (Não precisa de nenhuma alteração. Está perfeito.)
-exports.loginUser = async (req, res) => {
+exports.login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
@@ -120,7 +120,6 @@ exports.loginUser = async (req, res) => {
   }
 
   try {
-    // 1. Encontrar o usuário
     const userQuery = 'SELECT * FROM users WHERE email = $1';
     const { rows } = await db.query(userQuery, [email]);
     const user = rows[0];
@@ -129,26 +128,23 @@ exports.loginUser = async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-    // 2. Comparar a senha
     const isMatch = await bcrypt.compare(password, user.password_hash);
-
     if (!isMatch) {
       return res.status(401).json({ error: 'Credenciais inválidas.' });
     }
 
-    // 3. Criar o Token JWT (o "crachá")
     const payload = {
       id: user.id,
       email: user.email,
       role: user.role,
-      organizationId: user.organization_id, // MUITO IMPORTANTE!
+      organizationId: user.organization_id,
     };
 
-    const token = jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' } // Token expira em 1 dia
-    );
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+    // BUSCAR O PLANO
+    const orgQuery = await db.query('SELECT plan FROM organizations WHERE id = $1', [user.organization_id]);
+    const userPlan = orgQuery.rows[0]?.plan || null;
 
     res.status(200).json({
       message: 'Login realizado com sucesso!',
@@ -156,7 +152,9 @@ exports.loginUser = async (req, res) => {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        organizationId: user.organization_id,
+        plan: userPlan // <--- Plano aqui!
       }
     });
 
@@ -168,21 +166,24 @@ exports.loginUser = async (req, res) => {
 
 exports.verifyToken = async (req, res) => {
   try {
-    // O middleware 'checkAuth' já validou a assinatura do token e colocou o ID em req.userData.
-    // Agora, vamos garantir que o usuário não foi deletado do banco.
-    
     const { userId } = req.userData;
     
-    const userQuery = 'SELECT id, name, email, role FROM users WHERE id = $1';
+    // 1. Buscamos o usuário E o organization_id
+    const userQuery = 'SELECT id, name, email, role, organization_id FROM users WHERE id = $1';
     const { rows } = await db.query(userQuery, [userId]);
     const user = rows[0];
 
     if (!user) {
-      // Token é válido criptograficamente, mas o usuário não existe mais (foi deletado)
       return res.status(404).json({ valid: false, error: 'Usuário não encontrado.' });
     }
 
-    // Tudo certo!
+    // 2. BUSCAR O PLANO (Novo Passo)
+    const orgQuery = await db.query('SELECT plan FROM organizations WHERE id = $1', [user.organization_id]);
+    const userPlan = orgQuery.rows[0]?.plan || null;
+    
+    // Adicionamos o plano ao objeto que vai pro frontend
+    user.plan = userPlan;
+
     res.status(200).json({ valid: true, user: user });
 
   } catch (error) {
@@ -265,3 +266,4 @@ exports.loginGoogle = async (req, res) => {
     res.status(400).json({ error: 'Falha na autenticação com Google.' });
   }
 };
+
